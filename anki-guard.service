@@ -1,0 +1,8 @@
+[Unit]
+Description=Credit today once Anki's studied-today figure reaches 20 minutes
+
+[Service]
+Type=oneshot
+# No WorkingDirectory: anki_guard is installed into the user site-packages, so
+# the checked-out branch is never the running config by accident.
+ExecStart=/usr/bin/python3 -m anki_guard check

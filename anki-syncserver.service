@@ -1,0 +1,22 @@
+[Unit]
+Description=Self-hosted Anki sync server (AnkiDroid syncs here; anki-guard reads it)
+After=network-online.target
+
+[Service]
+Type=simple
+# SYNC_USER1 (the account password) and SYNC_HOST live in a 0600 file that
+# install.sh generates, never in this public unit.
+EnvironmentFile=%h/.config/anki_guard/syncserver.env
+Environment=SYNC_BASE=%h/.local/share/anki_guard/syncserver
+Environment=SYNC_PORT=8780
+Environment=RUST_LOG=anki=info
+# The system `anki` package (pacman anki-git), the same code /usr/bin/anki
+# runs, so desktop Anki and the server never disagree on the protocol.
+ExecStart=/usr/bin/python3 -m anki.syncserver
+# Bound to the LAN address: if the NIC is not up yet at login, the bind fails
+# and this retries instead of giving up.
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=default.target

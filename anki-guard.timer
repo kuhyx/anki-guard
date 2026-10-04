@@ -1,0 +1,14 @@
+[Unit]
+Description=Re-read the Anki sync server's collection every ten minutes
+
+[Timer]
+# AnkiDroid syncs when a session ends; ten minutes bounds how late the credit
+# reaches screen-locker and the gaming budget. A pass is a few-MB copy and one
+# query, so the cadence is cheap.
+OnBootSec=2min
+OnCalendar=*:0/10
+Unit=anki-guard.service
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target
