@@ -110,6 +110,9 @@ verify() {
 main() {
     load_account
     if [[ $VERIFY_ONLY -eq 0 ]]; then
+        # The guided entry waits for Enter between fields; a `!` command from
+        # Claude Code has no terminal, and read would hit EOF and exit mid-way.
+        [[ -t 0 ]] || fail "needs an interactive terminal (run it in a real shell, not via '!')"
         phone_connected || fail "no phone on adb (plug it in, accept USB debugging)"
         grant_local_network
         guided_entry
