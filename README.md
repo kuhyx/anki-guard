@@ -6,7 +6,7 @@ into 30 min of gaming time and a 30-min-later shutdown; without it, the base
 day is 30/30 shorter.
 
 ```
-AnkiDroid (phone) --sync--> anki --syncserver (PC, :8780, LAN)
+AnkiDroid --https--> Caddy (anki.kuhy.duckdns.org) --> anki --syncserver (127.0.0.1:8780)
                                    |  collection.anki2 (+ -wal)
                      anki-guard.timer (10 min): copy, query revlog
                                    |
@@ -18,14 +18,18 @@ AnkiDroid (phone) --sync--> anki --syncserver (PC, :8780, LAN)
 ## Install
 
 ```console
-./install.sh                    # package, sync account, units, health check
-scripts/setup_phone.sh          # AnkiDroid -> http://<PC LAN IP>:8780/
+./install.sh                    # package, sync account, units, Caddy site, health checks
+scripts/setup_phone.sh          # AnkiDroid -> https://anki.kuhy.duckdns.org/
 scripts/setup_phone.sh --verify-only
 python3 -m anki_guard status    # read-only one-liner
 ```
 
 Desktop Anki can sync to the same server: Preferences -> Syncing -> custom
-sync URL `http://<PC LAN IP>:8780/`, same account.
+sync URL `https://anki.kuhy.duckdns.org/`, same account.
+
+The server only listens on 127.0.0.1; the host Caddy edge (`gitea-caddy`)
+terminates TLS, so the phone syncs from any network and no firewall port is
+opened. `install.sh` owns `~/services/gitea/sites/anki.caddy`.
 
 ## The metric
 

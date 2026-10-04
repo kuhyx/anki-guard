@@ -15,6 +15,9 @@ Read README.md first. These are the invariants that are easy to break.
   `unicase` collation for `quick_check`.
 - **"Could not check" is not "no".** Unreadable = `unknown`, exit 3, nothing
   written. A readable but stale copy shows `synced_at`.
+- **Reached only through Caddy.** The server binds 127.0.0.1;
+  `https://anki.kuhy.duckdns.org/` (`PHONE_SYNC_URL`) is the one URL for
+  every client. Never open 8780 in the firewall.
 - **The sync account is secret.** `~/.config/anki_guard/syncserver.env`
   (0600) holds `SYNC_USER1`; never commit it or put it in a unit.
 

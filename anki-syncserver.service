@@ -13,8 +13,8 @@ Environment=RUST_LOG=anki=info
 # The system `anki` package (pacman anki-git), the same code /usr/bin/anki
 # runs, so desktop Anki and the server never disagree on the protocol.
 ExecStart=/usr/bin/python3 -m anki.syncserver
-# Bound to the LAN address: if the NIC is not up yet at login, the bind fails
-# and this retries instead of giving up.
+# Bound to 127.0.0.1: the host Caddy edge publishes it as
+# https://anki.kuhy.duckdns.org/ (install.sh writes that site).
 Restart=on-failure
 RestartSec=10s
 

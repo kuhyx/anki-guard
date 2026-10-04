@@ -83,6 +83,8 @@ exclude_dirs = ["tests", ".venv", ".demo"]
 
 [tool.pytest.ini_options]
 testpaths = ["anki_guard/tests"]
+# test_phone_scripts imports the adb helpers in scripts/.
+pythonpath = ["scripts"]
 addopts = [
     "-q",
     "--strict-markers",
