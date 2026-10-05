@@ -1,16 +1,23 @@
 # anki-guard
 
-Credits a day once Anki's own "studied today" figure reaches **20 minutes**,
-every day. The credit is a signed row that [earned_time]'s `anki` earner turns
-into 30 min of gaming time and a 30-min-later shutdown; without it, the base
-day is 30/30 shorter.
+Two daily quotas on one collection, each credited as a signed row that an
+[earned_time] earner turns into gaming time and a later shutdown:
+
+| quota | counts | bar | ledger |
+|---|---|---|---|
+| `anki` | every deck **except** `Automation` | 20 min every day | `ledger.json` |
+| `automation` | **only** `Automation` and its subdecks | 60 min Mon/Fri/Sat/Sun, 20 min Tue-Thu | `automation_ledger.json` |
+
+The decks are disjoint, so one review never pays both. A card in a filtered
+deck counts for its home deck; a review of a since-deleted card counts for
+`anki`. The `automation` deck is the PLC / industrial-control security study track.
 
 ```
 AnkiDroid --https--> Caddy (anki.kuhy.duckdns.org) --> anki --syncserver (127.0.0.1:8780)
                                    |  collection.anki2 (+ -wal)
                      anki-guard.timer (10 min): copy, query revlog
                                    |
-                ~/.local/share/anki_guard/ledger.json  (HMAC credit rows)
+   ~/.local/share/anki_guard/{ledger,automation_ledger}.json  (HMAC credit rows)
                                    |
              screen-locker (shutdown)  steam-backlog-enforcer (gaming)
 ```
@@ -33,10 +40,10 @@ opened. `install.sh` owns `~/services/gitea/sites/anki.caddy`.
 
 ## The metric
 
-`SELECT id, time FROM revlog WHERE id > <day start> AND type NOT IN (4, 5)`,
-the day starting at the collection's rollover hour exactly as Anki computes
+`revlog` rows with `id > <day start> AND type NOT IN (4, 5)`, joined to the
+card's home deck (`odid` if set, else `did`), the day starting at the collection's rollover hour exactly as Anki computes
 `next_day_at - 86400`. `time` is already capped per deck by "Maximum answer
 seconds". The credit's `detail.anki_day` is what the earner matches on, and
-`detail.studied_at` is when the running total crossed 20 minutes.
+`detail.studied_at` is when the running total crossed the quota's bar.
 
 [earned_time]: https://github.com/kuhyx/utils/tree/main/earned_time

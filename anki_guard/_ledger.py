@@ -6,7 +6,9 @@ Same row shape and key as book-guard and leetcode-guard (``entry_id``,
 ``hmac``), signed with ``earned_time.entry_signature``, so the consumers read
 it through ``earned_time.done_today`` with no Anki-specific code.
 
-One ``credit`` row per Anki day, id ``anki:<YYYY-MM-DD>``. ``detail`` values
+One ``credit`` row per quota and Anki day, id ``<quota>:<YYYY-MM-DD>``
+(``anki:`` in ``ledger.json``, ``automation:`` in ``automation_ledger.json``
+-- each quota has its own file, so each earner reads one). ``detail`` values
 are strings: ``anki_day`` (what the earner matches on), ``minutes``,
 ``reviews`` and ``studied_at`` (unix seconds of the review that crossed the
 threshold). There are no negative rows: a day without a credit is a "no".
@@ -33,12 +35,12 @@ from earned_time import entry_signature, verified
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from anki_guard._quota import Quota
     from anki_guard._studied import Studied
 
 _logger: Final = logging.getLogger(__name__)
 
 CREDIT: Final = "credit"
-_PREFIX: Final = "anki:"
 
 
 class LedgerError(Exception):
@@ -57,18 +59,20 @@ def read_key(key_file: Path) -> bytes | None:
     return key or None
 
 
-def entry_id(studied: Studied) -> str:
-    """The one row id a given Anki day can have."""
-    return f"{_PREFIX}{studied.anki_day.isoformat()}"
+def entry_id(studied: Studied, quota: Quota) -> str:
+    """The one row id a given quota and Anki day can have."""
+    return f"{quota.name}:{studied.anki_day.isoformat()}"
 
 
-def credit_row(studied: Studied, key: bytes, *, now: datetime) -> dict[str, object]:
+def credit_row(
+    studied: Studied, quota: Quota, key: bytes, *, now: datetime
+) -> dict[str, object]:
     """A signed credit row for a day that crossed the threshold."""
     if studied.crossed_at is None:
         msg = "a day below the threshold earns no credit row"
         raise ValueError(msg)
     row: dict[str, object] = {
-        "entry_id": entry_id(studied),
+        "entry_id": entry_id(studied, quota),
         "kind": CREDIT,
         "day": studied.anki_day.isoformat(),
         "created_at": now.astimezone(UTC).isoformat(),

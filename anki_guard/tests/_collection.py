@@ -18,14 +18,25 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
 
-# (revlog id in ms, time in ms, type)
-Review = tuple[int, int, int]
+# (revlog id in ms, time in ms, type), optionally + the card id it reviewed;
+# without one the card counts as deleted (no deck).
+Review = tuple[int, int, int] | tuple[int, int, int, int]
+# card id -> (deck id, original deck id; 0 unless in a filtered deck)
+Cards = dict[int, tuple[int, int]]
+
+
+def _revlog_row(review: Review) -> tuple[int, int | None, int, int]:
+    """``review`` in ``revlog`` column order, ``cid`` NULL when it has none."""
+    review_id, spent, kind, *card = review
+    return (review_id, card[0] if card else None, spent, kind)
 
 
 def make_collection(
     path: Path,
     *,
     reviews: Iterable[Review] = (),
+    decks: dict[int, str] | None = None,
+    cards: Cards | None = None,
     rollover: object = None,
     legacy_conf: dict[str, object] | None = None,
     mod_ms: int = 1_700_000_000_000,
@@ -34,6 +45,7 @@ def make_collection(
     """Create ``path`` as a tiny collection; ``wal`` leaves rows in a -wal file.
 
     ``legacy_conf`` builds the pre-``config``-table schema with ``col.conf``.
+    ``decks`` maps id to the stored name (``\x1f`` between levels).
     """
     db = connect(path)
     try:
@@ -55,9 +67,25 @@ def make_collection(
                     (json.dumps(rollover).encode(),),
                 )
         db.execute(
-            "CREATE TABLE revlog (id INTEGER PRIMARY KEY, time INTEGER, type INTEGER)"
+            "CREATE TABLE revlog"
+            " (id INTEGER PRIMARY KEY, cid INTEGER, time INTEGER, type INTEGER)"
         )
-        db.executemany("INSERT INTO revlog VALUES (?, ?, ?)", list(reviews))
+        db.executemany(
+            "INSERT INTO revlog VALUES (?, ?, ?, ?)",
+            [_revlog_row(r) for r in reviews],
+        )
+        db.execute(
+            "CREATE TABLE decks (id INTEGER PRIMARY KEY, name TEXT COLLATE unicase)"
+        )
+        deck_rows = {1: "Default"} if decks is None else decks
+        db.executemany("INSERT INTO decks VALUES (?, ?)", list(deck_rows.items()))
+        db.execute(
+            "CREATE TABLE cards (id INTEGER PRIMARY KEY, did INTEGER, odid INTEGER)"
+        )
+        db.executemany(
+            "INSERT INTO cards VALUES (?, ?, ?)",
+            [(cid, did, odid) for cid, (did, odid) in (cards or {}).items()],
+        )
         db.commit()
         if wal:
             # Keep the WAL: copy it out before close() checkpoints it away.

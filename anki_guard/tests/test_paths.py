@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from anki_guard._paths import paths
+from anki_guard._quota import ANKI, AUTOMATION
 
 if TYPE_CHECKING:
     import pytest
@@ -14,7 +15,8 @@ if TYPE_CHECKING:
 
 def test_sandbox_variables(tmp_path: Path, ag_paths: Paths) -> None:
     assert ag_paths.data_dir == tmp_path / "data"
-    assert ag_paths.ledger == tmp_path / "data" / "ledger.json"
+    assert ag_paths.ledger(ANKI) == tmp_path / "data" / "ledger.json"
+    assert ag_paths.ledger(AUTOMATION) == tmp_path / "data" / "automation_ledger.json"
     assert (
         ag_paths.collection
         == tmp_path / "data" / "syncserver" / "tester" / "collection.anki2"

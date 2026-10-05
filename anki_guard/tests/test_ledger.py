@@ -10,6 +10,7 @@ from earned_time import verified
 import pytest
 
 from anki_guard import _ledger
+from anki_guard._quota import ANKI
 from anki_guard._studied import Studied
 
 if TYPE_CHECKING:
@@ -20,6 +21,7 @@ KEY = b"k" * 32
 NOW = datetime(2026, 10, 4, 17, 0, tzinfo=UTC)
 DONE = Studied(
     date(2026, 10, 4),
+    required_seconds=1200,
     reviews=43,
     seconds=2520.4,
     crossed_at=1791135962.3721,
@@ -28,7 +30,7 @@ DONE = Studied(
 
 
 def test_credit_row_is_signed_and_complete() -> None:
-    row = _ledger.credit_row(DONE, KEY, now=NOW)
+    row = _ledger.credit_row(DONE, ANKI, KEY, now=NOW)
     assert verified(row, KEY)
     assert row["entry_id"] == "anki:2026-10-04"
     assert row["kind"] == "credit"
@@ -44,9 +46,9 @@ def test_credit_row_is_signed_and_complete() -> None:
 
 
 def test_no_credit_row_below_the_bar() -> None:
-    short = Studied(date(2026, 10, 4), 1, 60.0, None, 1.0)
+    short = Studied(date(2026, 10, 4), 1200, 1, 60.0, None, 1.0)
     with pytest.raises(ValueError, match="earns no credit"):
-        _ledger.credit_row(short, KEY, now=NOW)
+        _ledger.credit_row(short, ANKI, KEY, now=NOW)
 
 
 def test_read_key(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
@@ -87,7 +89,7 @@ def test_corrupt_ledger_is_never_emptied(tmp_path: Path, body: str, match: str) 
 def test_write_then_read_round_trip_keeps_foreign_rows(tmp_path: Path) -> None:
     ledger = tmp_path / "sub" / "ledger.json"
     foreign = {"entry_id": "x", "kind": "other"}
-    row = _ledger.credit_row(DONE, KEY, now=NOW)
+    row = _ledger.credit_row(DONE, ANKI, KEY, now=NOW)
     _ledger.write_rows(ledger, [foreign, row])
     assert json.loads(ledger.read_text()) == {"entries": [foreign, row]}
     assert _ledger.read_rows(ledger) == [foreign, row]
@@ -95,7 +97,7 @@ def test_write_then_read_round_trip_keeps_foreign_rows(tmp_path: Path) -> None:
 
 
 def test_has_credit_needs_a_verified_credit_with_the_id() -> None:
-    row = _ledger.credit_row(DONE, KEY, now=NOW)
+    row = _ledger.credit_row(DONE, ANKI, KEY, now=NOW)
     assert _ledger.has_credit(["junk", row], "anki:2026-10-04", KEY)
     assert not _ledger.has_credit([row], "anki:2026-10-05", KEY)
     assert not _ledger.has_credit([{**row, "hmac": "0" * 64}], "anki:2026-10-04", KEY)

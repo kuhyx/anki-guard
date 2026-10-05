@@ -15,7 +15,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from anki_guard._quota import Quota
 
 _REAL_KEY: Final = Path("/etc/workout-locker/hmac.key")
 _DEFAULT_USER: Final = "kuhy"
@@ -35,10 +38,9 @@ class Paths:
     sync_user: str
     key_file: Path
 
-    @property
-    def ledger(self) -> Path:
-        """The signed credit ledger the consumers read."""
-        return self.data_dir / "ledger.json"
+    def ledger(self, quota: Quota) -> Path:
+        """``quota``'s signed credit ledger, the one its earner reads."""
+        return self.data_dir / quota.ledger_name
 
     @property
     def sync_base(self) -> Path:

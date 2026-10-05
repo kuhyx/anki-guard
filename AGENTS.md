@@ -4,9 +4,13 @@ Read README.md first. These are the invariants that are easy to break.
 
 ## Invariants
 
-- **The gate only publishes facts.** One HMAC-signed `credit` row per Anki
-  day in `~/.local/share/anki_guard/ledger.json`. It never writes the
-  shutdown schedule or the gaming budget: earned_time's `anki` earner does.
+- **The gate only publishes facts.** One HMAC-signed `credit` row per quota
+  and Anki day: `anki` in `ledger.json`, `automation` in
+  `automation_ledger.json` (both under `~/.local/share/anki_guard/`). It never
+  writes the shutdown schedule or the gaming budget: earned_time's earners do.
+- **The quotas are disjoint** (`_quota.py`): `automation` counts only the
+  `Automation` deck and its subdecks, `anki` everything else. Filter on the
+  card's home deck (`odid` before `did`) so filtered decks cannot move reviews.
 - **Anki's own figure.** `revlog` since the collection's rollover, excluding
   manual (4) and rescheduled (5) rows; verified equal to
   `Collection.studied_today()` on 2026-10-04. Never hard-code the rollover.
@@ -31,7 +35,8 @@ Read README.md first. These are the invariants that are easy to break.
 ## Commands
 
 The sandbox is `ANKI_GUARD_ROOT=<dir>` (its own ledger and `syncserver/`) plus
-`ANKI_GUARD_KEY=<file>`; the timer runs the installed copy, never this tree.
+`ANKI_GUARD_KEY=<file>`. **The install is editable: the timer runs THIS
+tree**, so every saved edit is live within ten minutes -- keep it importable.
 
 - run: `ANKI_GUARD_ROOT=.demo ANKI_GUARD_KEY=.demo/key .venv/bin/python -m anki_guard status`
 - test: `.venv/bin/python -m pytest -q`

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from anki_guard._quota import ANKI
 from anki_guard._studied import (
     DEFAULT_ROLLOVER,
     CollectionError,
@@ -62,7 +63,7 @@ def test_sums_todays_reviews_and_finds_the_crossing(tmp_path: Path) -> None:
             (_ms(2026, 10, 4, 12, 0), 30_000, 3),
         ],
     )
-    got = studied(path, NOW, 1200)
+    got = studied(path, NOW, ANKI)
     assert got.anki_day == date(2026, 10, 4)
     assert got.reviews == 3
     assert got.seconds == 1230
@@ -73,7 +74,7 @@ def test_sums_todays_reviews_and_finds_the_crossing(tmp_path: Path) -> None:
 def test_below_the_bar_has_no_crossing(tmp_path: Path) -> None:
     path = tmp_path / "c.anki2"
     make_collection(path, rollover=0, reviews=[(_ms(2026, 10, 4, 9, 0), 1_199_999, 1)])
-    got = studied(path, NOW, 1200)
+    got = studied(path, NOW, ANKI)
     assert (got.reviews, got.crossed_at) == (1, None)
 
 
@@ -84,7 +85,7 @@ def test_missing_or_bad_rollover_uses_ankis_default(
     path = tmp_path / "c.anki2"
     make_collection(path, rollover=stored)
     with caplog.at_level(logging.WARNING):
-        got = studied(path, NOW, 1200)
+        got = studied(path, NOW, ANKI)
     assert got.anki_day == day_bounds(NOW, DEFAULT_ROLLOVER)[0]
     assert ("not an hour" in caplog.text) is (stored is not None)
 
@@ -102,7 +103,7 @@ def test_legacy_col_conf_rollover(
     path = tmp_path / "c.anki2"
     make_collection(path, legacy_conf=conf)
     with caplog.at_level(logging.WARNING):
-        assert studied(path, NOW, 1200).anki_day == expected
+        assert studied(path, NOW, ANKI).anki_day == expected
     assert "legacy col.conf" in caplog.text
 
 
@@ -113,7 +114,7 @@ def test_legacy_empty_conf_uses_default(tmp_path: Path) -> None:
         db.execute("UPDATE col SET conf = ''")
     db.close()
     early = datetime(2026, 10, 4, 0, 30, tzinfo=UTC)  # 02:30: default 4 -> yesterday
-    assert studied(path, early, 1200).anki_day == date(2026, 10, 3)
+    assert studied(path, early, ANKI).anki_day == date(2026, 10, 3)
 
 
 def test_empty_col_table_reports_zero_sync(tmp_path: Path) -> None:
@@ -122,7 +123,7 @@ def test_empty_col_table_reports_zero_sync(tmp_path: Path) -> None:
     with raw(path) as db:
         db.execute("DELETE FROM col")
     db.close()
-    assert studied(path, NOW, 1200).synced_at == 0
+    assert studied(path, NOW, ANKI).synced_at == 0
 
 
 def test_not_a_collection(tmp_path: Path) -> None:
@@ -131,4 +132,4 @@ def test_not_a_collection(tmp_path: Path) -> None:
         db.execute("CREATE TABLE x (y)")
     db.close()
     with pytest.raises(CollectionError, match="not a readable Anki collection"):
-        studied(path, NOW, 1200)
+        studied(path, NOW, ANKI)

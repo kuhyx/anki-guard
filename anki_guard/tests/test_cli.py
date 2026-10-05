@@ -8,6 +8,7 @@ import pytest
 
 from anki_guard import _cli
 from anki_guard._gate import Report, Status
+from anki_guard._quota import ANKI
 from anki_guard._studied import Studied
 
 STAMP = datetime(2026, 10, 4, 17, 46, tzinfo=UTC).timestamp()
@@ -15,23 +16,23 @@ STAMP = datetime(2026, 10, 4, 17, 46, tzinfo=UTC).timestamp()
 
 def test_render_unknown() -> None:
     assert (
-        _cli.render(Report(Status.UNKNOWN, reason="no collection"))
-        == "anki-guard: unknown -- no collection"
+        _cli.render(Report(ANKI, Status.UNKNOWN, reason="no collection"))
+        == "anki-guard anki: unknown -- no collection"
     )
 
 
 def test_render_done_with_crossing_and_reason() -> None:
-    studied = Studied(date(2026, 10, 4), 43, 2520.0, STAMP, STAMP)
-    line = _cli.render(Report(Status.UNKNOWN, studied, "disk full"))
+    studied = Studied(date(2026, 10, 4), 1200, 43, 2520.0, STAMP, STAMP)
+    line = _cli.render(Report(ANKI, Status.UNKNOWN, studied, "disk full"))
     assert line == (
-        "anki-guard: unknown -- 42.0/20 min, 43 reviews on Anki day 2026-10-04"
+        "anki-guard anki: unknown -- 42.0/20 min, 43 reviews on Anki day 2026-10-04"
         " (server copy last changed 2026-10-04 19:46); bar crossed at 19:46; disk full"
     )
 
 
 def test_render_short() -> None:
-    studied = Studied(date(2026, 10, 4), 2, 90.0, None, STAMP)
-    assert _cli.render(Report(Status.SHORT, studied)).endswith(
+    studied = Studied(date(2026, 10, 4), 1200, 2, 90.0, None, STAMP)
+    assert _cli.render(Report(ANKI, Status.SHORT, studied)).endswith(
         "(server copy last changed 2026-10-04 19:46)"
     )
 
@@ -45,14 +46,16 @@ def test_main_exit_codes(
 ) -> None:
     seen: dict[str, bool] = {}
 
-    def fake_run(paths: object, now: object, *, write: bool) -> Report:
+    def fake_run(paths: object, now: object, quota: object, *, write: bool) -> Report:
         seen["write"] = write
-        return Report(Status.SHORT, Studied(date(2026, 10, 4), 0, 0.0, None, STAMP))
+        return Report(
+            ANKI, Status.SHORT, Studied(date(2026, 10, 4), 1200, 0, 0.0, None, STAMP)
+        )
 
     monkeypatch.setattr(_cli, "run", fake_run)
     assert _cli.main([command]) == 0
     assert seen["write"] is write
-    assert capsys.readouterr().out.startswith("anki-guard: short")
+    assert capsys.readouterr().out.startswith("anki-guard anki: short")
 
 
 def test_main_unknown_exits_3(capsys: pytest.CaptureFixture[str]) -> None:

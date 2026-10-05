@@ -1,8 +1,10 @@
 # Copyright (c) 2026 Krzysztof Rudnicki. MIT License.
-"""One pass: read today's study off the server and credit a finished day.
+"""One pass: read today's study off the server and credit each finished quota.
 
-The gate only publishes a fact. It never writes the shutdown schedule or the
-gaming budget -- earned_time's ``anki`` earner turns a credit row into time.
+The gate only publishes facts. It never writes the shutdown schedule or the
+gaming budget -- earned_time's ``anki`` and ``automation`` earners turn a
+credit row into time. Every quota reads its own snapshot copy and is judged
+on its own, so one unreadable read never blocks the other's credit.
 
 **"Could not check" is not "no".** A missing collection, a torn copy or an
 unreadable key is ``UNKNOWN`` and exits non-zero, so the timer's journal
@@ -26,11 +28,9 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from anki_guard._paths import Paths
+    from anki_guard._quota import Quota
 
 _logger: Final = logging.getLogger(__name__)
-
-# Anki's own studied-today figure must reach this, every day.
-REQUIRED_SECONDS: Final = 20 * 60
 
 
 class Status(StrEnum):
@@ -45,45 +45,49 @@ class Status(StrEnum):
 
 @dataclass(frozen=True)
 class Report:
-    """The outcome of one pass."""
+    """The outcome of one quota's pass."""
 
+    quota: Quota
     status: Status
     studied: Studied | None = None
     reason: str = ""
 
 
-def _read(paths: Paths, now: datetime) -> Studied:
+def _read(paths: Paths, now: datetime, quota: Quota) -> Studied:
     with snapshot(paths.collection) as copy:
-        return studied(copy, now, REQUIRED_SECONDS)
+        return studied(copy, now, quota)
 
 
-def run(paths: Paths, now: datetime, *, write: bool) -> Report:
-    """Read today's study and, when ``write``, record a finished day."""
+def run(paths: Paths, now: datetime, quota: Quota, *, write: bool) -> Report:
+    """Read ``quota``'s study today and, when ``write``, record a finished day."""
     try:
-        today = _read(paths, now)
+        today = _read(paths, now, quota)
     except (SnapshotError, CollectionError) as exc:
         _logger.warning("cannot read the Anki collection: %s", exc)
-        return Report(Status.UNKNOWN, reason=str(exc))
+        return Report(quota, Status.UNKNOWN, reason=str(exc))
     if today.crossed_at is None:
-        return Report(Status.SHORT, today)
+        return Report(quota, Status.SHORT, today)
     if not write:
-        return Report(Status.DONE, today)
-    return _record(paths, today, now)
+        return Report(quota, Status.DONE, today)
+    return _record(paths, quota, today, now)
 
 
-def _record(paths: Paths, today: Studied, now: datetime) -> Report:
-    """Append today's credit unless it is already there."""
+def _record(paths: Paths, quota: Quota, today: Studied, now: datetime) -> Report:
+    """Append today's credit to ``quota``'s ledger unless it is already there."""
     key = _ledger.read_key(paths.key_file)
     if key is None:
-        return Report(Status.UNKNOWN, today, f"no signing key at {paths.key_file}")
+        return Report(
+            quota, Status.UNKNOWN, today, f"no signing key at {paths.key_file}"
+        )
+    ledger = paths.ledger(quota)
     try:
         with _ledger.exclusive(paths.write_lock):
-            rows = _ledger.read_rows(paths.ledger)
-            if _ledger.has_credit(rows, _ledger.entry_id(today), key):
-                return Report(Status.ALREADY, today)
-            rows.append(_ledger.credit_row(today, key, now=now))
-            _ledger.write_rows(paths.ledger, rows)
+            rows = _ledger.read_rows(ledger)
+            if _ledger.has_credit(rows, _ledger.entry_id(today, quota), key):
+                return Report(quota, Status.ALREADY, today)
+            rows.append(_ledger.credit_row(today, quota, key, now=now))
+            _ledger.write_rows(ledger, rows)
     except (_ledger.LedgerError, OSError) as exc:
-        _logger.warning("cannot record today's credit: %s", exc)
-        return Report(Status.UNKNOWN, today, str(exc))
-    return Report(Status.CREDITED, today)
+        _logger.warning("cannot record today's %s credit: %s", quota.name, exc)
+        return Report(quota, Status.UNKNOWN, today, str(exc))
+    return Report(quota, Status.CREDITED, today)

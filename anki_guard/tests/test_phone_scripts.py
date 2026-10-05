@@ -82,3 +82,31 @@ def test_dump_refuses_other_foreign_windows(monkeypatch: pytest.MonkeyPatch) -> 
     _phone(monkeypatch, [_node("com.android.systemui", "Nie teraz")])
     with pytest.raises(phone_ui.StepError, match=r"not com\.ichi2\.anki"):
         phone_ui.Phone("com.ichi2.anki").dump()
+
+
+def _deck_list() -> str:
+    return "".join(_node("com.ichi2.anki", d) for d in phone_setup_auto.EXPECTED_DECKS)
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_an_in_sync_phone_is_done_once_media_sync_begins(
+    monkeypatch: pytest.MonkeyPatch, empty: bool
+) -> None:
+    """Nothing to download is success for a phone that has the collection.
+
+    An empty phone still has to prove a full download: media sync alone
+    must not pass it.
+    """
+    in_sync = [("/sync/meta", "android"), ("/msync/begin", "android")]
+    monkeypatch.setattr(phone_setup_auto, "phone_requests", lambda *_a: in_sync)
+    monkeypatch.setattr(phone_setup_auto, "SYNC_TIMEOUT_S", 0.0 if empty else 60.0)
+    phone = phone_ui.Phone("com.ichi2.anki")
+    _phone(monkeypatch, [_deck_list(), _deck_list()])
+    if empty:
+        with pytest.raises(phone_ui.StepError, match="no finished sync"):
+            phone_setup_auto.await_download(phone, "since", "kuhy", empty=True)
+    else:
+        assert (
+            phone_setup_auto.await_download(phone, "since", "kuhy", empty=False)
+            == "android"
+        )

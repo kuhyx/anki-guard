@@ -183,7 +183,14 @@ def answer_conflict(phone: Phone, screen: Screen, *, safe: bool) -> None:
 
 
 def await_download(phone: Phone, since: str, user: str, *, empty: bool) -> str:
-    """Wait for the full download; return AnkiDroid's client string."""
+    """Wait for the sync to finish; return AnkiDroid's client string.
+
+    An empty phone must pull the whole collection (``/sync/download``). A phone
+    that already has it may be in sync and download nothing; there the
+    collection sync is done once media sync begins, which AnkiDroid only
+    starts after a successful collection sync.
+    """
+    done_uris = ("/sync/download",) if empty else ("/sync/download", "/msync/begin")
     deadline = time.monotonic() + SYNC_TIMEOUT_S
     while time.monotonic() < deadline:
         requests = phone_requests(since, user)
@@ -194,16 +201,16 @@ def await_download(phone: Phone, since: str, user: str, *, empty: bool) -> str:
         if screen.find(texts=CONFLICT) is not None:
             answer_conflict(phone, screen, safe=empty and bool(requests))
             continue
-        pulled = [c for u, c in requests if u.startswith("/sync/download")]
+        pulled = [c for u, c in requests if u.startswith(done_uris)]
         if pulled and all(screen.has_text_prefix(d) for d in EXPECTED_DECKS):
             return pulled[-1]
         time.sleep(2.0)
-    msg = f"no finished download in {SYNC_TIMEOUT_S:.0f}s: {phone.dump().describe()}"
+    msg = f"no finished sync in {SYNC_TIMEOUT_S:.0f}s: {phone.dump().describe()}"
     raise StepError(msg)
 
 
 def main() -> int:
-    """Run the whole flow; 0 on a proven download, 1 otherwise."""
+    """Run the whole flow; 0 on a proven sync without upload, 1 otherwise."""
     logging.basicConfig(format="phone_setup_auto: %(message)s", level=logging.INFO)
     since = dt.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
     try:
@@ -216,7 +223,7 @@ def main() -> int:
     except StepError, OSError, KeyError, subprocess.SubprocessError:
         LOG.exception("STOPPED")
         return 1
-    LOG.info('downloaded: /sync/download from client="%s", no upload', client)
+    LOG.info('synced from client="%s", no upload', client)
     LOG.info("deck list shows: %s", ", ".join(EXPECTED_DECKS))
     return 0
 

@@ -1,9 +1,9 @@
 # Copyright (c) 2026 Krzysztof Rudnicki. MIT License.
 """``python -m anki_guard {check,status}``.
 
-``check`` is the timer's pass: it reads and records a finished day. ``status``
-reads only. Both print one line; exit 0 when the collection could be read,
-3 when it could not (so the timer unit shows as failed).
+``check`` is the timer's pass: it reads and records each finished quota.
+``status`` reads only. Both print one line per quota; exit 0 when every quota
+could be read, 3 when any could not (so the timer unit shows as failed).
 """
 
 from __future__ import annotations
@@ -13,8 +13,9 @@ from datetime import UTC, datetime
 import logging
 from typing import TYPE_CHECKING, Final
 
-from anki_guard._gate import REQUIRED_SECONDS, Report, Status, run
+from anki_guard._gate import Report, Status, run
 from anki_guard._paths import paths
+from anki_guard._quota import QUOTAS
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -31,16 +32,17 @@ def _stamp(stamp: float) -> str:
 
 
 def render(report: Report) -> str:
-    """The one-line summary both commands print."""
+    """The one-line summary of one quota both commands print."""
+    head = f"anki-guard {report.quota.name}: {report.status}"
     today = report.studied
     if today is None:
-        return f"anki-guard: {report.status} -- {report.reason}"
+        return f"{head} -- {report.reason}"
     figures = (
-        f"{today.seconds / 60:.1f}/{REQUIRED_SECONDS // 60} min,"
+        f"{today.seconds / 60:.1f}/{today.required_seconds // 60} min,"
         f" {today.reviews} reviews on Anki day {today.anki_day}"
     )
     synced = f"server copy last changed {_stamp(today.synced_at)}"
-    line = f"anki-guard: {report.status} -- {figures} ({synced})"
+    line = f"{head} -- {figures} ({synced})"
     if today.crossed_at is not None:
         line += f"; bar crossed at {_clock(today.crossed_at)}"
     if report.reason:
@@ -54,6 +56,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("command", choices=("check", "status"))
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
-    report = run(paths(), datetime.now(tz=UTC), write=args.command == "check")
-    print(render(report))
-    return EXIT_UNKNOWN if report.status is Status.UNKNOWN else 0
+    now = datetime.now(tz=UTC)
+    reports = [
+        run(paths(), now, quota, write=args.command == "check") for quota in QUOTAS
+    ]
+    for report in reports:
+        print(render(report))
+    return EXIT_UNKNOWN if any(r.status is Status.UNKNOWN for r in reports) else 0
