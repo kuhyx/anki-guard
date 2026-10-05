@@ -100,8 +100,8 @@ def test_an_in_sync_phone_is_done_once_media_sync_begins(
     in_sync = [("/sync/meta", "android"), ("/msync/begin", "android")]
     monkeypatch.setattr(phone_setup_auto, "phone_requests", lambda *_a: in_sync)
     monkeypatch.setattr(phone_setup_auto, "SYNC_TIMEOUT_S", 0.0 if empty else 60.0)
+    _phone(monkeypatch, [_deck_list(), _deck_list()])  # before Phone(): fakes adb
     phone = phone_ui.Phone("com.ichi2.anki")
-    _phone(monkeypatch, [_deck_list(), _deck_list()])
     if empty:
         with pytest.raises(phone_ui.StepError, match="no finished sync"):
             phone_setup_auto.await_download(phone, "since", "kuhy", empty=True)
