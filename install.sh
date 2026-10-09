@@ -45,7 +45,7 @@ install_package() {
     log "installing into the system python's user site-packages"
     "$SYSTEM_PYTHON" -m pip install --user --break-system-packages -q -e "$REPO_DIR" \
         || fail "pip install"
-    "$SYSTEM_PYTHON" -c 'import anki_guard, earned_time' || fail "imports"
+    "$SYSTEM_PYTHON" -c 'import anki_guard, earned_time, freedays' || fail "imports"
     [[ -r "$HMAC_KEY" ]] || fail "$HMAC_KEY unreadable -- the ledger cannot be signed"
 }
 

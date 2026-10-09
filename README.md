@@ -5,8 +5,11 @@ Two daily quotas on one collection, each credited as a signed row that an
 
 | quota | counts | bar | ledger |
 |---|---|---|---|
-| `anki` | every deck **except** `Automation` | 20 min every day | `ledger.json` |
-| `automation` | **only** `Automation` and its subdecks | 60 min Mon/Fri/Sat/Sun, 20 min Tue-Thu | `automation_ledger.json` |
+| `anki` | every deck **except** `Automation` | 12 min on workdays, 20 min other days | `ledger.json` |
+| `automation` | **only** `Automation` and its subdecks | 8 min on workdays, 25 min other days | `automation_ledger.json` |
+
+Workdays are `freedays.WORKDAYS` (Tue-Thu), the definition leetcode-guard,
+screen-locker and wake-alarm share; both workday bars together take 20 min.
 
 The decks are disjoint, so one review never pays both. A card in a filtered
 deck counts for its home deck; a review of a since-deleted card counts for

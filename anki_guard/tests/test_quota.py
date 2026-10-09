@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
 
+import freedays
 import pytest
 
 from anki_guard import _ledger
@@ -44,16 +45,34 @@ def _minutes(cid: int | None, count: int, start: int = 0) -> list[tuple[int, ...
 @pytest.mark.parametrize(
     ("day", "anki", "automation"),
     [
-        (date(2026, 10, 5), 20, 60),  # Mon
-        (date(2026, 10, 6), 20, 20),  # Tue
-        (date(2026, 10, 8), 20, 20),  # Thu
-        (date(2026, 10, 9), 20, 60),  # Fri
-        (date(2026, 10, 11), 20, 60),  # Sun
+        (date(2026, 10, 5), 20, 25),  # Mon
+        (date(2026, 10, 6), 12, 8),  # Tue
+        (date(2026, 10, 7), 12, 8),  # Wed
+        (date(2026, 10, 8), 12, 8),  # Thu
+        (date(2026, 10, 9), 20, 25),  # Fri
+        (date(2026, 10, 10), 20, 25),  # Sat
+        (date(2026, 10, 11), 20, 25),  # Sun
     ],
 )
 def test_weekday_bars(day: date, anki: int, automation: int) -> None:
     assert ANKI.required_seconds(day) == anki * 60
     assert AUTOMATION.required_seconds(day) == automation * 60
+
+
+def test_cheap_days_are_the_shared_freedays_workdays() -> None:
+    week = [date(2026, 10, 5) + timedelta(days=n) for n in range(7)]
+    cheap = {d.weekday() for d in week if ANKI.required_seconds(d) < 20 * 60}
+    assert cheap == freedays.WORKDAYS
+
+
+def test_workday_bars_fit_twenty_minutes_together() -> None:
+    tuesday = date(2026, 10, 6)
+    assert sum(q.required_seconds(tuesday) for q in QUOTAS) <= 20 * 60
+
+
+def test_no_bar_exceeds_twenty_five_minutes() -> None:
+    week = [date(2026, 10, 5) + timedelta(days=n) for n in range(7)]
+    assert max(q.required_seconds(d) for q in QUOTAS for d in week) <= 25 * 60
 
 
 def test_each_review_counts_for_exactly_one_quota(
@@ -86,8 +105,8 @@ def test_no_automation_deck_leaves_anki_as_before(
 def test_quotas_credit_separately_into_their_own_ledgers(
     ag_paths: Paths, server_collection: Callable[..., Path]
 ) -> None:
-    # 60 min of automation on a Monday, only 5 of anything else.
-    reviews = _minutes(20, 60) + _minutes(10, 5, 60)
+    # 25 min of automation on a Monday, only 5 of anything else.
+    reviews = _minutes(20, 25) + _minutes(10, 5, 25)
     server_collection(rollover=0, reviews=reviews, decks=DECKS, cards=CARDS)
     assert run(ag_paths, NOW, AUTOMATION, write=True).status is Status.CREDITED
     assert run(ag_paths, NOW, ANKI, write=True).status is Status.SHORT
@@ -98,11 +117,11 @@ def test_quotas_credit_separately_into_their_own_ledgers(
     assert not ag_paths.ledger(ANKI).exists()
 
 
-def test_fifty_nine_minutes_is_short_on_a_full_day(
+def test_twenty_four_minutes_is_short_on_a_full_day(
     ag_paths: Paths, server_collection: Callable[..., Path]
 ) -> None:
-    server_collection(rollover=0, reviews=_minutes(20, 59), decks=DECKS, cards=CARDS)
+    server_collection(rollover=0, reviews=_minutes(20, 24), decks=DECKS, cards=CARDS)
     report = run(ag_paths, NOW, AUTOMATION, write=True)
     assert report.status is Status.SHORT
     assert report.studied is not None
-    assert report.studied.required_seconds == 3600
+    assert report.studied.required_seconds == 25 * 60
