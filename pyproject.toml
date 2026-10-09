@@ -9,8 +9,8 @@ requires-python = ">=3.14"
 # The Anki sync server itself is NOT a pip dependency: it is the system
 # `anki` package (pacman anki-git) that /usr/bin/anki also runs from.
 dependencies = [
-    "earned-time @ git+https://github.com/kuhyx/utils@earned-time-v0.4.0#subdirectory=earned_time",
-    "freedays @ git+https://github.com/kuhyx/utils@freedays-v0.3.0#subdirectory=freedays",
+    "earned-time @ git+https://github.com/kuhyx/utils@earned-time-v0.5.0#subdirectory=earned_time",
+    "freedays @ git+https://github.com/kuhyx/utils@freedays-v0.3.1#subdirectory=freedays",
 ]
 
 [project.optional-dependencies]
