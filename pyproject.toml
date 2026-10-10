@@ -33,7 +33,6 @@ exclude = [".git", ".venv", "__pycache__", "build", "dist", ".demo"]
 select = ["ALL"]
 ignore = [
     "D203", "D213", "COM812", "ISC001", "S603",
-    "CPY001",  # personal repo, no copyright policy (ruff 0.17 made CPY001 stable under select=ALL)
 ]
 
 # The same test-only relaxations every sibling guard repo uses.
