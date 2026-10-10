@@ -9,13 +9,13 @@ requires-python = ">=3.14"
 # The Anki sync server itself is NOT a pip dependency: it is the system
 # `anki` package (pacman anki-git) that /usr/bin/anki also runs from.
 dependencies = [
-    "earned-time @ git+https://github.com/kuhyx/utils@earned-time-v0.6.0#subdirectory=earned_time",
+    "earned-time @ git+https://github.com/kuhyx/utils@earned-time-v0.6.1#subdirectory=earned_time",
     "freedays @ git+https://github.com/kuhyx/utils@freedays-v0.3.1#subdirectory=freedays",
 ]
 
 [project.optional-dependencies]
 # The test + lint toolchain the pre-commit gate runs from .venv.
-dev = ["mypy==2.4.0", "pylint==4.1.2", "pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.16.10"]
+dev = ["mypy==2.4.0", "pylint==4.1.2", "pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.17.0"]
 
 [build-system]
 requires = ["setuptools>=61"]
@@ -31,7 +31,10 @@ exclude = [".git", ".venv", "__pycache__", "build", "dist", ".demo"]
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["D203", "D213", "COM812", "ISC001", "S603"]
+ignore = [
+    "D203", "D213", "COM812", "ISC001", "S603",
+    "CPY001",  # personal repo, no copyright policy (ruff 0.17 made CPY001 stable under select=ALL)
+]
 
 # The same test-only relaxations every sibling guard repo uses.
 [tool.ruff.lint.per-file-ignores]

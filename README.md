@@ -1,5 +1,11 @@
 # anki-guard
 
+> **Retired as a gate** from earned_time's `TUTOR_FROM`: the `anki` earner is
+> gone and `automation` is paid per block by the Automation tutor. No quota is
+> enforced and nothing is credited; `python3 -m anki_guard status` still
+> reports study, and `anki-syncserver` keeps serving the decks. The rest of
+> this file describes the gate as it ran until then.
+
 Two daily quotas on one collection, each credited as a signed row that an
 [earned_time] earner turns into gaming time and a later shutdown:
 

@@ -37,7 +37,8 @@ def test_render_short() -> None:
     )
 
 
-@pytest.mark.parametrize(("command", "write"), [("check", True), ("status", False)])
+# Retired as a gate: neither command records a credit any more.
+@pytest.mark.parametrize(("command", "write"), [("check", False), ("status", False)])
 def test_main_exit_codes(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],

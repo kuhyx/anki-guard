@@ -84,7 +84,13 @@ install_units() {
         install -m 644 "$REPO_DIR/$unit" "$UNIT_DIR/"
     done
     systemctl --user daemon-reload
-    systemctl --user enable --now anki-syncserver.service anki-guard.timer
+    # The guard is retired (earned_time TUTOR_FROM): only the sync server runs,
+    # so the decks stay reachable from the phone, unenforced.
+    systemctl --user enable --now anki-syncserver.service
+    if systemctl --user is-enabled --quiet anki-guard.timer; then
+        log "anki-guard is retired; disabling its timer"
+        systemctl --user disable --now anki-guard.timer
+    fi
     systemctl --user restart anki-syncserver.service
 }
 

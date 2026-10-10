@@ -1,9 +1,12 @@
 # Copyright (c) 2026 Krzysztof Rudnicki. MIT License.
 """``python -m anki_guard {check,status}``.
 
-``check`` is the timer's pass: it reads and records each finished quota.
-``status`` reads only. Both print one line per quota; exit 0 when every quota
-could be read, 3 when any could not (so the timer unit shows as failed).
+**Retired as a gate.** From earned_time's ``TUTOR_FROM`` the Anki earner is
+gone and Automation is paid by the Automation tutor, so no quota is enforced
+and ``check`` no longer records a credit: both commands only read and
+report. The decks stay on the sync server, unenforced. ``check`` is kept so a
+still-enabled timer does not fail. Both print one line per quota; exit 0 when
+every quota could be read, 3 when any could not.
 """
 
 from __future__ import annotations
@@ -54,12 +57,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run one command and return the process exit code."""
     parser = argparse.ArgumentParser(prog="anki_guard", description=__doc__)
     parser.add_argument("command", choices=("check", "status"))
-    args = parser.parse_args(argv)
+    # Parsed only to validate the command (and serve --help): both now read.
+    parser.parse_args(argv)
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
     now = datetime.now(tz=UTC)
-    reports = [
-        run(paths(), now, quota, write=args.command == "check") for quota in QUOTAS
-    ]
+    # Read-only for both commands since the tutor cutover: nothing is credited.
+    reports = [run(paths(), now, quota, write=False) for quota in QUOTAS]
     for report in reports:
         print(render(report))
     return EXIT_UNKNOWN if any(r.status is Status.UNKNOWN for r in reports) else 0
