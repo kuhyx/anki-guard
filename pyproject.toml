@@ -9,13 +9,13 @@ requires-python = ">=3.14"
 # The Anki sync server itself is NOT a pip dependency: it is the system
 # `anki` package (pacman anki-git) that /usr/bin/anki also runs from.
 dependencies = [
-    "earned-time @ git+https://github.com/kuhyx/utils@earned-time-v0.6.1#subdirectory=earned_time",
-    "freedays @ git+https://github.com/kuhyx/utils@freedays-v0.3.1#subdirectory=freedays",
+    "earned-time @ git+https://github.com/kuhyx/utils@earned-time-v0.15.0#subdirectory=earned_time",
+    "freedays @ git+https://github.com/kuhyx/utils@freedays-v0.4.0#subdirectory=freedays",
 ]
 
 [project.optional-dependencies]
 # The test + lint toolchain the pre-commit gate runs from .venv.
-dev = ["mypy==2.4.0", "pylint==4.1.2", "pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.17.0"]
+dev = ["mypy==2.4.0", "pylint==4.1.3", "pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.17.1"]
 
 [build-system]
 requires = ["setuptools>=61"]
